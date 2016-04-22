@@ -67,6 +67,8 @@ enum lower_packing_builtins_op {
    LOWER_UNPACK_UNORM_4x8               = 0x0800
 };
 
+class tfeedback_decl;
+
 bool do_common_optimization(exec_list *ir, bool linked,
 			    bool uniform_locations_assigned,
                             const struct gl_shader_compiler_options *options,
@@ -85,7 +87,7 @@ bool do_cse(exec_list *instructions);
 void do_dead_builtin_varyings(struct gl_context *ctx,
                               gl_shader *producer, gl_shader *consumer,
                               unsigned num_tfeedback_decls,
-                              class tfeedback_decl *tfeedback_decls);
+                              tfeedback_decl *tfeedback_decls);
 bool do_dead_code(exec_list *instructions, bool uniform_locations_assigned);
 bool do_dead_code_local(exec_list *instructions);
 bool do_dead_code_unlinked(exec_list *instructions);

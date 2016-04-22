@@ -83,10 +83,14 @@ initialize_mesa_context(struct gl_context *ctx, glslopt_target api)
 
 
 struct glslopt_ctx {
-	glslopt_ctx (glslopt_target target) {
+	glslopt_ctx (glslopt_target target) {		
 		this->target = target;
 		mem_ctx = ralloc_context (NULL);
 		initialize_mesa_context (&mesa_ctx, target);
+		metalMainFunctionName = NULL;
+		uniformBindingTable = NULL;
+		attributeBindingTable = NULL;
+		bufferBindingTable = NULL;
 	}
 	~glslopt_ctx() {
 		ralloc_free (mem_ctx);
@@ -94,6 +98,10 @@ struct glslopt_ctx {
 	struct gl_context mesa_ctx;
 	void* mem_ctx;
 	glslopt_target target;
+	const char* metalMainFunctionName;
+	const glsl_metal_binding_table* uniformBindingTable;
+	const glsl_metal_binding_table* attributeBindingTable;
+	const glsl_metal_binding_table* bufferBindingTable;
 };
 
 glslopt_ctx* glslopt_initialize (glslopt_target target)
@@ -105,6 +113,26 @@ void glslopt_cleanup (glslopt_ctx* ctx)
 {
 	delete ctx;
 	_mesa_destroy_shader_compiler();
+}
+
+void glsopt_set_metal_main_function_name(glslopt_ctx* ctx, const char* functionName)
+{
+	ctx->metalMainFunctionName = ralloc_strdup(ctx->mem_ctx, functionName);
+}
+
+void glsopt_set_metal_uniform_binding_table(glslopt_ctx* ctx, const glsl_metal_binding_table* bindingTable)
+{
+	ctx->uniformBindingTable = bindingTable;
+}
+
+void glsopt_set_metal_attribute_binding_table(glslopt_ctx* ctx, const glsl_metal_binding_table* bindingTable)
+{
+	ctx->attributeBindingTable = bindingTable;
+}
+
+void glsopt_set_metal_buffer_binding_table(glslopt_ctx* ctx, const glsl_metal_binding_table* bindingTable)
+{
+	ctx->bufferBindingTable = bindingTable;
 }
 
 void glslopt_set_max_unroll_iterations (glslopt_ctx* ctx, unsigned iterations)
@@ -653,7 +681,7 @@ glslopt_shader* glslopt_optimize (glslopt_ctx* ctx, glslopt_shader_type type, co
 	if (!state->error) {
 		validate_ir_tree(ir);
 		if (ctx->target == kGlslTargetMetal)
-			shader->rawOutput = _mesa_print_ir_metal(ir, state, ralloc_strdup(shader, ""), printMode, &shader->uniformsSize);
+			shader->rawOutput = _mesa_print_ir_metal(ir, state, ralloc_strdup(shader, ""), printMode, &shader->uniformsSize,ctx->metalMainFunctionName,ctx->uniformBindingTable,ctx->attributeBindingTable,ctx->bufferBindingTable);
 		else
 			shader->rawOutput = _mesa_print_ir_glsl(ir, state, ralloc_strdup(shader, ""), printMode);
 	}
@@ -694,7 +722,7 @@ glslopt_shader* glslopt_optimize (glslopt_ctx* ctx, glslopt_shader_type type, co
 	if (!state->error)
 	{
 		if (ctx->target == kGlslTargetMetal)
-			shader->optimizedOutput = _mesa_print_ir_metal(ir, state, ralloc_strdup(shader, ""), printMode, &shader->uniformsSize);
+			shader->optimizedOutput = _mesa_print_ir_metal(ir, state, ralloc_strdup(shader, ""), printMode, &shader->uniformsSize,ctx->metalMainFunctionName,ctx->uniformBindingTable,ctx->attributeBindingTable,ctx->bufferBindingTable);
 		else
 			shader->optimizedOutput = _mesa_print_ir_glsl(ir, state, ralloc_strdup(shader, ""), printMode);
 	}

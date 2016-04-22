@@ -238,9 +238,9 @@ _mesa_print_ir_glsl(exec_list *instructions,
 		if (state->EXT_shader_texture_lod_enable)
 			str.asprintf_append ("#extension GL_EXT_shader_texture_lod : enable\n");
 		if (state->OES_standard_derivatives_enable)
-			str.asprintf_append ("#extension GL_OES_standard_derivatives : enable\n");
-		if (state->EXT_shadow_samplers_enable)
-			str.asprintf_append ("#extension GL_EXT_shadow_samplers : enable\n");
+			str.asprintf_append ("#extension GL_OES_standard_derivatives : enable\n");		
+ 		if (state->EXT_shadow_samplers_enable)
+ 			str.asprintf_append ("#extension GL_EXT_shadow_samplers : enable\n");
 		if (state->EXT_frag_depth_enable)
 			str.asprintf_append ("#extension GL_EXT_frag_depth : enable\n");
 		if (state->es_shader && state->language_version < 300)
@@ -339,7 +339,7 @@ void ir_print_glsl_visitor::newline_deindent()
 
 void ir_print_glsl_visitor::print_var_name (ir_variable* v)
 {
-    long id = (long)hash_table_find (globals->var_hash, v);
+    size_t id = (size_t)hash_table_find (globals->var_hash, v);
 	if (!id && v->data.mode == ir_var_temporary)
 	{
         id = ++globals->var_counter;
@@ -464,7 +464,7 @@ void ir_print_glsl_visitor::visit(ir_variable *ir)
 	// give an id to any variable defined in a function that is not an uniform
 	if ((this->mode == kPrintGlslNone && ir->data.mode != ir_var_uniform))
 	{
-		long id = (long)hash_table_find (globals->var_hash, ir);
+		size_t id = (size_t)hash_table_find (globals->var_hash, ir);
 		if (id == 0)
 		{
 			id = ++globals->var_counter;

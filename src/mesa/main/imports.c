@@ -344,7 +344,8 @@ _mesa_round_to_even(float val)
 GLhalfARB
 _mesa_float_to_half(float val)
 {
-   const fi_type fi = {val};
+   fi_type fi;
+   fi.f = val;   
    const int flt_m = fi.i & 0x7fffff;
    const int flt_e = (fi.i >> 23) & 0xff;
    const int flt_s = (fi.i >> 31) & 0x1;

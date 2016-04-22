@@ -28,9 +28,10 @@
 
 #include "ir.h"
 #include "ir_print_glsl_visitor.h"
+#include "glsl_metal.h"
 
 extern char* _mesa_print_ir_metal(exec_list *instructions,
 			struct _mesa_glsl_parse_state *state,
-			char* buf, PrintGlslMode mode, int* outUniformsSize);
+			char* buf, PrintGlslMode mode, int* outUniformsSize, const char* mainFunctionName, const glsl_metal_binding_table* uniformBindingTable, const glsl_metal_binding_table* attributeBindingTable, const glsl_metal_binding_table* bufferBindingTable );
 
 #endif /* IR_PRINT_GLSL_VISITOR_H */

@@ -63,9 +63,15 @@ enum glslopt_precision {
 	kGlslPrecCount
 };
 
+struct glsl_metal_binding_table;
+
 glslopt_ctx* glslopt_initialize (glslopt_target target);
 void glslopt_cleanup (glslopt_ctx* ctx);
 
+void glsopt_set_metal_main_function_name (glslopt_ctx* ctx, const char* functionName);
+void glsopt_set_metal_uniform_binding_table (glslopt_ctx* ctx, const glsl_metal_binding_table* bindingTable);
+void glsopt_set_metal_attribute_binding_table(glslopt_ctx* ctx, const glsl_metal_binding_table* bindingTable);
+void glsopt_set_metal_buffer_binding_table(glslopt_ctx* ctx, const glsl_metal_binding_table* bindingTable);
 void glslopt_set_max_unroll_iterations (glslopt_ctx* ctx, unsigned iterations);
 
 glslopt_shader* glslopt_optimize (glslopt_ctx* ctx, glslopt_shader_type type, const char* shaderSource, unsigned options);

@@ -68,7 +68,7 @@ initialize_mesa_context(struct gl_context *ctx, glslopt_target api)
 		ctx->Extensions.EXT_shader_framebuffer_fetch = true;
 		break;
 	case kGlslTargetVulkan:
-		ctx->Const.GLSLVersion = 310;
+		ctx->Const.GLSLVersion = 420;
 		ctx->Extensions.ARB_ES3_compatibility = true;
 		ctx->Extensions.EXT_shader_framebuffer_fetch = true;
 		ctx->Extensions.ARB_shading_language_420pack = true;

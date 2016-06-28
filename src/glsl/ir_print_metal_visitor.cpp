@@ -134,6 +134,7 @@ struct metal_print_context
 	, inoutStr(ralloc_strdup(buffer, ""))
 	, uniformStr(ralloc_strdup(buffer, ""))
 	, paramsStr(ralloc_strdup(buffer, ""))
+	, typedeclStr(ralloc_strdup(buffer, ""))
 	, cbStr(ralloc_strdup(buffer, ""))
 	, writingParams(false)
 	, matrixCastsDone(false)
@@ -153,6 +154,7 @@ struct metal_print_context
 	string_buffer inoutStr;
 	string_buffer uniformStr;
 	string_buffer paramsStr;
+	string_buffer typedeclStr;
 	string_buffer cbStr;
 	bool writingParams;
 	bool matrixCastsDone;
@@ -333,7 +335,10 @@ _mesa_print_ir_metal(exec_list *instructions,
 			if (var->data.mode == ir_var_shader_inout)
 				strOut = &ctx.inoutStr;
 		}
-
+		
+		if (ir->ir_type == ir_type_typedecl) {
+			strOut = &ctx.typedeclStr;
+		}
 
 		ir_print_metal_visitor v (ctx, *strOut, &gtracker, mode, state, mainFunctionName, uniformBindingTable, attributeBindingTable);
 		v.loopstate = ls;
@@ -364,6 +369,8 @@ _mesa_print_ir_metal(exec_list *instructions,
 	ctx.uniformStr.asprintf_append("};\n");
 
 	// emit global array/struct constants
+	
+	ctx.prefixStr.asprintf_append("%s", ctx.typedeclStr.c_str());
 	foreach_in_list_safe(gconst_entry_metal, node, &gtracker.global_constants)
 	{
 		ir_constant* c = node->ir;
@@ -2083,7 +2090,7 @@ ir_print_metal_visitor::visit(ir_typedecl_statement *ir)
 		buffer.asprintf_append ("  ");
 		//if (state->es_shader)
 		//	buffer.asprintf_append ("%s", get_precision_string(s->fields.structure[j].precision)); //@TODO
-		print_type(buffer, ir, s->fields.structure[j].type, false);
+		print_type_precision(buffer, s->fields.structure[j].type, s->fields.structure[j].precision, false);
 		buffer.asprintf_append (" %s", s->fields.structure[j].name);
 		print_type_post(buffer, s->fields.structure[j].type, false);
 		buffer.asprintf_append (";\n");

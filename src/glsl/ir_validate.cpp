@@ -38,6 +38,10 @@
 #include "program/hash_table.h"
 #include "glsl_types.h"
 
+#ifdef KEEN_BUILD_DEBUG
+#define DEBUG
+#endif
+
 namespace {
 
 class ir_validate : public ir_hierarchical_visitor {

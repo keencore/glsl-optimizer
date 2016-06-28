@@ -94,6 +94,22 @@ ir_struct_usage_visitor::visit(ir_dereference_variable *ir)
 	return visit_continue;
 }
 
+static void visit_struct( const glsl_type* pType, ir_struct_usage_visitor* self )
+{
+	for( size_t i = 0u; i < pType->length; ++i )
+	{
+		const glsl_struct_field& field = pType->fields.structure[ i ];
+
+		if( field.type->base_type == GLSL_TYPE_STRUCT && !self->has_struct_entry( field.type ) )
+		{
+			struct_entry *entry = new(self->mem_ctx) struct_entry( field.type );
+			self->struct_list.push_tail( entry );
+
+			visit_struct( field.type, self );
+		}
+	}
+}
+
 static void visit_variable (ir_instruction* ir, void* data)
 {
 	ir_variable* var = ir->as_variable();
@@ -109,6 +125,8 @@ static void visit_variable (ir_instruction* ir, void* data)
 		{
 			struct_entry *entry = new(self->mem_ctx) struct_entry(t);
 			self->struct_list.push_tail (entry);
+
+			visit_struct( t, self );
 		}
 	}
 

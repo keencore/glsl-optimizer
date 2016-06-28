@@ -492,24 +492,53 @@ void ir_print_glsl_visitor::visit(ir_variable *ir)
 		return;
 	}
 	
-	buffer.asprintf_append ("%s%s%s%s",
-							cent, inv, interp[ir->data.interpolation], mode[decormode][ir->data.mode]);
-	print_precision (ir, ir->type);
-	print_type(buffer, ir->type, false);
-	buffer.asprintf_append (" ");
-	print_var_name (ir);
-	print_type_post(buffer, ir->type, false);
-	
-	if (ir->constant_value &&
-		ir->data.mode != ir_var_shader_in &&
-		ir->data.mode != ir_var_shader_out &&
-		ir->data.mode != ir_var_shader_inout &&
-		ir->data.mode != ir_var_function_in &&
-		ir->data.mode != ir_var_function_out &&
-		ir->data.mode != ir_var_function_inout)
+	if( this->state->language_version >= 400 && ir->data.mode == ir_var_uniform && ir->get_interface_type() )
 	{
-		buffer.asprintf_append (" = ");
-		visit (ir->constant_value);
+		const glsl_type* pInterfaceType = ir->get_interface_type();
+
+		buffer.asprintf_append( "uniform %s {\n", pInterfaceType->name );
+
+		for( size_t i = 0u; i < pInterfaceType->length; ++i )
+		{
+			const glsl_struct_field& field = pInterfaceType->fields.structure[ i ];
+
+			buffer.asprintf_append( "\t" );			
+			if( field.precision != glsl_precision_undefined )
+			{
+				buffer.asprintf_append( "%s", get_precision_string( field.precision ) );
+			}
+			else
+			{ 
+				print_precision( ir, field.type );
+			}
+			buffer.asprintf_append( " " );
+			print_type( buffer, field.type, false );
+			buffer.asprintf_append( " " );
+			buffer.asprintf_append( "%s;\n", field.name );
+		}
+
+		buffer.asprintf_append( "}" );
+	}
+	else
+	{
+		buffer.asprintf_append( "%s%s%s%s", cent, inv, interp[ ir->data.interpolation ], mode[ decormode ][ ir->data.mode ] );
+		print_precision( ir, ir->type );
+		print_type( buffer, ir->type, false );
+		buffer.asprintf_append( " " );
+		print_var_name( ir );
+		print_type_post( buffer, ir->type, false );
+
+		if( ir->constant_value &&
+			ir->data.mode != ir_var_shader_in &&
+			ir->data.mode != ir_var_shader_out &&
+			ir->data.mode != ir_var_shader_inout &&
+			ir->data.mode != ir_var_function_in &&
+			ir->data.mode != ir_var_function_out &&
+			ir->data.mode != ir_var_function_inout )
+		{
+			buffer.asprintf_append( " = " );
+			visit( ir->constant_value );
+		}
 	}
 }
 

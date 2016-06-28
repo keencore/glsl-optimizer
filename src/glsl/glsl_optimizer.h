@@ -41,6 +41,7 @@ enum glslopt_target {
 	kGlslTargetOpenGLES20 = 1,
 	kGlslTargetOpenGLES30 = 2,
 	kGlslTargetMetal = 3,
+	kGlslTargetVulkan = 4
 };
 
 // Type info

@@ -62,7 +62,7 @@ struct ga_entry : public exec_node
 	{
 		assert(ir);
 		this->ir = ir;
-	}	
+	}
 	ir_instruction* ir;
 };
 
@@ -74,12 +74,12 @@ struct global_print_tracker {
 		var_hash = hash_table_ctor(0, hash_table_pointer_hash, hash_table_pointer_compare);
 		main_function_done = false;
 	}
-	
+
 	~global_print_tracker() {
 		hash_table_dtor (var_hash);
 		ralloc_free(mem_ctx);
 	}
-	
+
 	unsigned	var_counter;
 	hash_table*	var_hash;
 	exec_list	global_assignements;
@@ -139,12 +139,12 @@ public:
 	virtual void visit(ir_typedecl_statement *);
 	virtual void visit(ir_emit_vertex *);
 	virtual void visit(ir_end_primitive *);
-	
+
 	void emit_assignment_part (ir_dereference* lhs, ir_rvalue* rhs, unsigned write_mask, ir_rvalue* dstIndex);
     bool can_emit_canonical_for (loop_variable_state *ls);
 	bool emit_canonical_for (ir_loop* ir);
 	bool try_print_array_assignment (ir_dereference* lhs, ir_rvalue* rhs);
-	
+
 	int indentation;
 	int expression_depth;
 	string_buffer& buffer;
@@ -238,7 +238,7 @@ _mesa_print_ir_glsl(exec_list *instructions,
 		if (state->EXT_shader_texture_lod_enable)
 			str.asprintf_append ("#extension GL_EXT_shader_texture_lod : enable\n");
 		if (state->OES_standard_derivatives_enable)
-			str.asprintf_append ("#extension GL_OES_standard_derivatives : enable\n");		
+			str.asprintf_append ("#extension GL_OES_standard_derivatives : enable\n");
  		if (state->EXT_shadow_samplers_enable)
  			str.asprintf_append ("#extension GL_EXT_shadow_samplers : enable\n");
 		if (state->EXT_frag_depth_enable)
@@ -257,14 +257,14 @@ _mesa_print_ir_glsl(exec_list *instructions,
 		if (state->EXT_texture_array_enable)
 			str.asprintf_append ("#extension GL_EXT_texture_array : enable\n");
 	}
-	
+
 	// remove unused struct declarations
 	do_remove_unused_typedecls(instructions);
-	
+
 	global_print_tracker gtracker;
 	int uses_texlod_impl = 0;
 	int uses_texlodproj_impl = 0;
-	
+
 	loop_state* ls = analyze_loop_variables(instructions);
 	if (ls->loop_found)
 		set_loop_controls(instructions, ls);
@@ -288,11 +288,11 @@ _mesa_print_ir_glsl(exec_list *instructions,
 		uses_texlod_impl |= v.uses_texlod_impl;
 		uses_texlodproj_impl |= v.uses_texlodproj_impl;
 	}
-	
+
 	delete ls;
-	
+
 	print_texlod_workarounds(uses_texlod_impl, uses_texlodproj_impl, str);
-	
+
 	// Add the optimized glsl code
 	str.asprintf_append("%s", body.c_str());
 
@@ -373,7 +373,7 @@ void ir_print_glsl_visitor::print_precision (ir_instruction* ir, const glsl_type
 		return;
 	}
 	glsl_precision prec = precision_from_ir(ir);
-	
+
 	// In fragment shader, default float precision is undefined.
 	// We must thus always print it, when there was no default precision
 	// and for whatever reason our type ended up having undefined precision.
@@ -401,7 +401,7 @@ void ir_print_glsl_visitor::print_precision (ir_instruction* ir, const glsl_type
 		if (prec == glsl_precision_low || prec == glsl_precision_undefined)
 			return;
 	}
-	
+
 	if (prec == glsl_precision_high || prec == glsl_precision_undefined)
 	{
 		if (ir->ir_type == ir_type_function_signature)
@@ -444,23 +444,54 @@ void ir_print_glsl_visitor::visit(ir_variable *ir)
 		{ "", "uniform ", "attribute ", "varying ", "inout ", "in ", "out ", "inout ", "", "", "" },
 		{ "", "uniform ", "varying ",   "out ",     "inout ", "in ", "out ", "inout ", "", "", "" },
 	};
-	
+
 	const char *const interp[] = { "", "smooth ", "flat ", "noperspective " };
-	
-	if (this->state->language_version >= 300 && ir->data.explicit_location)
+
+	if (this->state->language_version >= 300)
 	{
-		const int binding_base = (this->state->stage == MESA_SHADER_VERTEX ? (int)VERT_ATTRIB_GENERIC0 : (int)FRAG_RESULT_DATA0);
-		const int location = ir->data.location - binding_base;
-		buffer.asprintf_append ("layout(location=%d) ", location);
+		if( ir->data.explicit_location )
+		{
+			int binding_base = 0u;
+			if( state->stage == MESA_SHADER_VERTEX )
+			{
+				if( ir->data.mode == ir_var_shader_in )
+				{
+					binding_base = VERT_ATTRIB_GENERIC0;
+				}
+				else
+				{
+					binding_base = VARYING_SLOT_VAR0;
+				}
+			}
+			else if( state->stage == MESA_SHADER_FRAGMENT )
+			{
+				if( ir->data.mode == ir_var_shader_in )
+				{
+					binding_base = VARYING_SLOT_VAR0;
+				}
+				else
+				{
+					binding_base = FRAG_RESULT_DATA0;
+				}
+			}
+
+			const int location = ir->data.location - binding_base;
+			buffer.asprintf_append( "layout(location=%d) ", location );
+		}
+		else if( ir->data.explicit_binding )
+		{
+			const int location = ir->data.binding;
+			buffer.asprintf_append( "layout(binding = %d) ", location );
+		}
 	}
-	
+
 	int decormode = this->mode;
 	// GLSL 1.30 and up use "in" and "out" for everything
 	if (this->state->language_version >= 130)
 	{
 		decormode = 0;
 	}
-	
+
 	// give an id to any variable defined in a function that is not an uniform
 	if ((this->mode == kPrintGlslNone && ir->data.mode != ir_var_uniform))
 	{
@@ -471,7 +502,7 @@ void ir_print_glsl_visitor::visit(ir_variable *ir)
 			hash_table_insert (globals->var_hash, (void*)id, ir);
 		}
 	}
-	
+
 	// if this is a loop induction variable, do not print it
 	// (will be printed inside loop body)
 	if (!inside_loop_body)
@@ -484,14 +515,14 @@ void ir_print_glsl_visitor::visit(ir_variable *ir)
 			return;
 		}
 	}
-	
+
 	// keep invariant declaration for builtin variables
 	if (strstr(ir->name, "gl_") == ir->name) {
 		buffer.asprintf_append ("%s", inv);
 		print_var_name (ir);
 		return;
 	}
-	
+
 	if( this->state->language_version >= 400 && ir->data.mode == ir_var_uniform && ir->get_interface_type() )
 	{
 		const glsl_type* pInterfaceType = ir->get_interface_type();
@@ -502,13 +533,13 @@ void ir_print_glsl_visitor::visit(ir_variable *ir)
 		{
 			const glsl_struct_field& field = pInterfaceType->fields.structure[ i ];
 
-			buffer.asprintf_append( "\t" );			
+			buffer.asprintf_append( "\t" );
 			if( field.precision != glsl_precision_undefined )
 			{
 				buffer.asprintf_append( "%s", get_precision_string( field.precision ) );
 			}
 			else
-			{ 
+			{
 				print_precision( ir, field.type );
 			}
 			buffer.asprintf_append( " " );
@@ -579,7 +610,7 @@ void ir_print_glsl_visitor::visit(ir_function_signature *ir)
    indent();
    buffer.asprintf_append ("{\n");
    indentation++; previous_skipped = false;
-	
+
 	// insert postponed global assigments
 	if (strcmp(ir->function()->name, "main") == 0)
 	{
@@ -750,7 +781,7 @@ static const char *const operator_vec_glsl_strs[] = {
 
 static bool is_binop_func_like(ir_expression_operation op, const glsl_type* type)
 {
-	if (op == ir_binop_equal || 
+	if (op == ir_binop_equal ||
 		op == ir_binop_nequal ||
 		op == ir_binop_mod ||
 		(op >= ir_binop_dot && op <= ir_binop_pow))
@@ -766,7 +797,7 @@ void ir_print_glsl_visitor::visit(ir_expression *ir)
 {
 	++this->expression_depth;
 	newline_indent();
-	
+
 	if (ir->get_num_operands() == 1) {
 		if (ir->operation >= ir_unop_f2i && ir->operation <= ir_unop_u2i) {
 			print_type(buffer, ir->type, true);
@@ -786,7 +817,7 @@ void ir_print_glsl_visitor::visit(ir_expression *ir)
 	else if (ir->operation == ir_binop_vector_extract)
 	{
 		// a[b]
-		
+
 		if (ir->operands[0])
 			ir->operands[0]->accept(this);
 		buffer.asprintf_append ("[");
@@ -806,7 +837,7 @@ void ir_print_glsl_visitor::visit(ir_expression *ir)
 			buffer.asprintf_append ("%s (", operator_vec_glsl_strs[ir->operation-ir_binop_less]);
 		else
 			buffer.asprintf_append ("%s (", operator_glsl_strs[ir->operation]);
-		
+
 		if (ir->operands[0])
 			ir->operands[0]->accept(this);
 		buffer.asprintf_append (", ");
@@ -842,7 +873,7 @@ void ir_print_glsl_visitor::visit(ir_expression *ir)
 			ir->operands[2]->accept(this);
 		buffer.asprintf_append (")");
 	}
-	
+
 	newline_deindent();
 	--this->expression_depth;
 }
@@ -861,7 +892,7 @@ void ir_print_glsl_visitor::visit(ir_texture *ir)
 		sampler_uv_dim += 1;
 	const bool is_proj = (uv_dim > sampler_uv_dim);
 	const bool is_lod = (ir->op == ir_txl);
-	
+
 	if (is_lod && state->es_shader && state->language_version < 300 && state->stage == MESA_SHADER_FRAGMENT)
 	{
 		// Special workaround for GLES 2.0 LOD samplers to prevent a lot of debug spew.
@@ -891,15 +922,15 @@ void ir_print_glsl_visitor::visit(ir_texture *ir)
 			uses_texlod_impl |= (1 << position);
 	}
 
-	
+
     // texture function name
     //ACS: shadow lookups and lookups with dimensionality included in the name were deprecated in 130
-    if(state->language_version<130) 
+    if(state->language_version<130)
     {
         buffer.asprintf_append ("%s", is_shadow ? "shadow" : "texture");
         buffer.asprintf_append ("%s", tex_sampler_dim_name[sampler_dim]);
     }
-    else 
+    else
     {
         if (ir->op == ir_txf)
             buffer.asprintf_append ("texelFetch");
@@ -909,7 +940,7 @@ void ir_print_glsl_visitor::visit(ir_texture *ir)
 
 	if (is_array && state->EXT_texture_array_enable)
 		buffer.asprintf_append ("Array");
-	
+
 	if (is_proj)
 		buffer.asprintf_append ("Proj");
 	if (ir->op == ir_txl)
@@ -918,7 +949,7 @@ void ir_print_glsl_visitor::visit(ir_texture *ir)
 		buffer.asprintf_append ("Grad");
     if (ir->offset != NULL)
         buffer.asprintf_append ("Offset");
-	
+
 	if (state->es_shader)
 	{
 		if ( (is_shadow && state->EXT_shadow_samplers_enable) ||
@@ -927,7 +958,7 @@ void ir_print_glsl_visitor::visit(ir_texture *ir)
 			buffer.asprintf_append ("EXT");
 		}
 	}
-	
+
 	if(ir->op == ir_txd)
 	{
 		if(state->es_shader && state->EXT_shader_texture_lod_enable)
@@ -935,23 +966,23 @@ void ir_print_glsl_visitor::visit(ir_texture *ir)
 		else if(!state->es_shader && state->ARB_shader_texture_lod_enable)
 			buffer.asprintf_append ("ARB");
 	}
-	
+
 	buffer.asprintf_append (" (");
-	
+
 	// sampler
 	ir->sampler->accept(this);
 	buffer.asprintf_append (", ");
-	
+
 	// texture coordinate
 	ir->coordinate->accept(this);
-	
+
 	// lod
 	if (ir->op == ir_txl || ir->op == ir_txf)
 	{
 		buffer.asprintf_append (", ");
 		ir->lod_info.lod->accept(this);
 	}
-	
+
 	// grad
 	if (ir->op == ir_txd)
 	{
@@ -967,17 +998,17 @@ void ir_print_glsl_visitor::visit(ir_texture *ir)
 		buffer.asprintf_append (", ");
 		ir->offset->accept(this);
 	}
-	
+
 	// lod bias
 	if (ir->op == ir_txb)
 	{
 		buffer.asprintf_append (", ");
 		ir->lod_info.bias->accept(this);
 	}
-	
+
     /*
-	
-	
+
+
    if (ir->op != ir_txf) {
       if (ir->projector)
 	 ir->projector->accept(this);
@@ -1036,7 +1067,7 @@ void ir_print_glsl_visitor::visit(ir_swizzle *ir)
 	}
 
 	ir->val->accept(this);
-	
+
 	if (ir->val->type == glsl_type::float_type || ir->val->type == glsl_type::int_type || ir->val->type == glsl_type::uint_type)
 	{
 		if (ir->mask.num_components != 1)
@@ -1045,7 +1076,7 @@ void ir_print_glsl_visitor::visit(ir_swizzle *ir)
 		}
 		return;
 	}
-	
+
 	// Swizzling scalar types is not allowed so just return now.
 	if (ir->val->type->vector_elements == 1)
 		return;
@@ -1095,7 +1126,7 @@ bool ir_print_glsl_visitor::try_print_array_assignment (ir_dereference* lhs, ir_
 		return false;
 	if (lhstype->base_type != rhstype->base_type)
 		return false;
-	
+
 	const unsigned size = rhstype->array_size();
 	for (unsigned i = 0; i < size; i++)
 	{
@@ -1112,7 +1143,7 @@ bool ir_print_glsl_visitor::try_print_array_assignment (ir_dereference* lhs, ir_
 void ir_print_glsl_visitor::emit_assignment_part (ir_dereference* lhs, ir_rvalue* rhs, unsigned write_mask, ir_rvalue* dstIndex)
 {
 	lhs->accept(this);
-	
+
 	if (dstIndex)
 	{
 		// if dst index is a constant, then emit a swizzle
@@ -1130,7 +1161,7 @@ void ir_print_glsl_visitor::emit_assignment_part (ir_dereference* lhs, ir_rvalue
 			buffer.asprintf_append ("]");
 		}
 	}
-	
+
 	char mask[5];
 	unsigned j = 0;
 	const glsl_type* lhsType = lhs->type;
@@ -1152,9 +1183,9 @@ void ir_print_glsl_visitor::emit_assignment_part (ir_dereference* lhs, ir_rvalue
 		buffer.asprintf_append (".%s", mask);
 		hasWriteMask = true;
 	}
-	
+
 	buffer.asprintf_append (" = ");
-	
+
 	bool typeMismatch = !dstIndex && (lhsType != rhsType);
 	const bool addSwizzle = hasWriteMask && typeMismatch;
 	if (typeMismatch)
@@ -1163,9 +1194,9 @@ void ir_print_glsl_visitor::emit_assignment_part (ir_dereference* lhs, ir_rvalue
 			print_type(buffer, lhsType, true);
 		buffer.asprintf_append ("(");
 	}
-	
+
 	rhs->accept(this);
-	
+
 	if (typeMismatch)
 	{
 		buffer.asprintf_append (")");
@@ -1181,40 +1212,40 @@ static bool try_print_increment (ir_print_glsl_visitor* vis, ir_assignment* ir)
 {
 	if (ir->condition)
 		return false;
-	
+
 	// Needs to be + on rhs
 	ir_expression* rhsOp = ir->rhs->as_expression();
 	if (!rhsOp || rhsOp->operation != ir_binop_add)
 		return false;
-	
+
 	// Needs to write to whole variable
 	ir_variable* lhsVar = ir->whole_variable_written();
 	if (lhsVar == NULL)
 		return false;
-	
+
 	// Types must match
 	if (ir->lhs->type != ir->rhs->type)
 		return false;
-	
+
 	// Type must be scalar
 	if (!ir->lhs->type->is_scalar())
 		return false;
-	
+
 	// rhs0 must be variable deref, same one as lhs
 	ir_dereference_variable* rhsDeref = rhsOp->operands[0]->as_dereference_variable();
 	if (rhsDeref == NULL)
 		return false;
 	if (lhsVar != rhsDeref->var)
 		return false;
-	
+
 	// rhs1 must be a constant
 	ir_constant* rhsConst = rhsOp->operands[1]->as_constant();
 	if (!rhsConst)
 		return false;
-	
+
 	// print variable name
 	ir->lhs->accept (vis);
-	
+
 	// print ++ or +=const
 	if (ir->lhs->type->base_type <= GLSL_TYPE_INT && rhsConst->is_one())
 	{
@@ -1225,7 +1256,7 @@ static bool try_print_increment (ir_print_glsl_visitor* vis, ir_assignment* ir)
 		vis->buffer.asprintf_append(" += ");
 		rhsConst->accept (vis);
 	}
-	
+
 	return true;
 }
 
@@ -1248,7 +1279,7 @@ void ir_print_glsl_visitor::visit(ir_assignment *ir)
 			}
 		}
 	}
-	
+
 	// assignments in global scope are postponed to main function
 	if (this->mode != kPrintGlslNone)
 	{
@@ -1257,7 +1288,7 @@ void ir_print_glsl_visitor::visit(ir_assignment *ir)
 		buffer.asprintf_append ("//"); // for the ; that will follow (ugly, I know)
 		return;
 	}
-	
+
 	// if RHS is ir_triop_vector_insert, then we have to do some special dance. If source expression is:
 	//   dst = vector_insert (a, b, idx)
 	// then emit it like:
@@ -1275,7 +1306,7 @@ void ir_print_glsl_visitor::visit(ir_assignment *ir)
 			if (lhsDeref->var == rhsDeref->var)
 				skip_assign = true;
 		}
-		
+
 		if (!skip_assign)
 		{
 			emit_assignment_part(ir->lhs, rhsOp->operands[0], ir->write_mask, NULL);
@@ -1284,19 +1315,19 @@ void ir_print_glsl_visitor::visit(ir_assignment *ir)
 		emit_assignment_part(ir->lhs, rhsOp->operands[1], ir->write_mask, rhsOp->operands[2]);
 		return;
 	}
-	
+
 	if (try_print_increment (this, ir))
 		return;
-		
+
 	if (try_print_array_assignment (ir->lhs, ir->rhs))
 		return;
-		
+
    if (ir->condition)
    {
       ir->condition->accept(this);
 	  buffer.asprintf_append (" ");
    }
-	
+
 	emit_assignment_part (ir->lhs, ir->rhs, ir->write_mask, NULL);
 }
 
@@ -1330,7 +1361,7 @@ void print_float (string_buffer& buffer, float f)
 
 	if (f == -std::numeric_limits<float>::infinity())
 		strcpy(tmp, "(-1.0/0.0)");
-	
+
 	// Do similar thing for NaN
 	if (f != f)
 		strcpy(tmp, "(0.0/0.0)");
@@ -1377,7 +1408,7 @@ void ir_print_glsl_visitor::visit(ir_constant *ir)
 				return;
 			}
 		}
-		
+
 		print_float (buffer, ir->value.f[0]);
 		return;
 	}
@@ -1426,7 +1457,7 @@ void ir_print_glsl_visitor::visit(ir_constant *ir)
 	    buffer.asprintf_append (", ");
 	 first = false;
 	 inst->accept(this);
-     } 
+     }
    }else {
       bool first = true;
       for (unsigned i = 0; i < ir->type->components(); i++) {
@@ -1474,13 +1505,13 @@ ir_print_glsl_visitor::visit(ir_call *ir)
 		buffer.asprintf_append ("//"); // for the ; that will follow (ugly, I know)
 		return;
 	}
-	
+
 	if (ir->return_deref)
 	{
 		visit(ir->return_deref);
-		buffer.asprintf_append (" = ");		
+		buffer.asprintf_append (" = ");
 	}
-	
+
    buffer.asprintf_append ("%s (", ir->callee_name());
    bool first = true;
    foreach_in_list(ir_instruction, inst, &ir->actual_parameters) {
@@ -1558,13 +1589,13 @@ bool ir_print_glsl_visitor::can_emit_canonical_for (loop_variable_state *ls)
 {
 	if (ls == NULL)
 		return false;
-	
+
 	if (ls->induction_variables.is_empty())
 		return false;
-	
+
 	if (ls->terminators.is_empty())
 		return false;
-	
+
 	// only support for loops with one terminator condition
 	int terminatorCount = ls->terminators.length();
 	if (terminatorCount != 1)
@@ -1579,13 +1610,13 @@ bool ir_print_glsl_visitor::emit_canonical_for (ir_loop* ir)
 
     if (!can_emit_canonical_for(ls))
         return false;
-	
+
 	hash_table* terminator_hash = hash_table_ctor(0, hash_table_pointer_hash, hash_table_pointer_compare);
 	hash_table* induction_hash = hash_table_ctor(0, hash_table_pointer_hash, hash_table_pointer_compare);
-	
+
 	buffer.asprintf_append("for (");
 	inside_loop_body = true;
-	
+
 	// emit loop induction variable declarations.
 	// only for loops with single induction variable, to avoid cases of different types of them
 	if (ls->private_induction_variable_count == 1)
@@ -1594,7 +1625,7 @@ bool ir_print_glsl_visitor::emit_canonical_for (ir_loop* ir)
 		{
 			if (!this->loopstate->get_for_inductor(indvar->var))
 				continue;
-			
+
 			ir_variable* var = indvar->var;
 			print_precision (var, var->type);
 			print_type(buffer, var->type, false);
@@ -1619,12 +1650,12 @@ bool ir_print_glsl_visitor::emit_canonical_for (ir_loop* ir)
 		}
 	}
 	buffer.asprintf_append("; ");
-	
+
 	// emit loop terminating conditions
 	foreach_in_list(loop_terminator, term, &ls->terminators)
 	{
 		hash_table_insert(terminator_hash, term, term->ir);
-		
+
 		// IR has conditions in the form of "if (x) break",
 		// whereas for loop needs them negated, in the form
 		// if "while (x) continue the loop".
@@ -1652,7 +1683,7 @@ bool ir_print_glsl_visitor::emit_canonical_for (ir_loop* ir)
 				term_expr->operands[1]->accept(this);
 				handled = true;
 			}
-			
+
 			// Unary logic not
 			if (!handled && term_expr->operation == ir_unop_logic_not)
 			{
@@ -1660,7 +1691,7 @@ bool ir_print_glsl_visitor::emit_canonical_for (ir_loop* ir)
 				handled = true;
 			}
 		}
-		
+
 		// More complex condition, print as "!(x)"
 		if (!handled)
 		{
@@ -1670,7 +1701,7 @@ bool ir_print_glsl_visitor::emit_canonical_for (ir_loop* ir)
 		}
 	}
 	buffer.asprintf_append("; ");
-	
+
 	// emit loop induction variable updates
 	bool first = true;
 	foreach_in_list(loop_variable, indvar, &ls->induction_variables)
@@ -1682,9 +1713,9 @@ bool ir_print_glsl_visitor::emit_canonical_for (ir_loop* ir)
 		first = false;
 	}
 	buffer.asprintf_append(") {\n");
-	
+
 	inside_loop_body = false;
-	
+
 	// emit loop body
 	indentation++; previous_skipped = false;
 	foreach_in_list(ir_instruction, inst, &ir->body_instructions) {
@@ -1695,19 +1726,19 @@ bool ir_print_glsl_visitor::emit_canonical_for (ir_loop* ir)
 			continue;
 		if (hash_table_find(induction_hash, inst))
 			continue;
-		
+
 		indent();
 		inst->accept(this);
 		end_statement_line();
 	}
 	indentation--;
-	
+
 	indent();
 	buffer.asprintf_append("}");
-	
+
 	hash_table_dtor (terminator_hash);
 	hash_table_dtor (induction_hash);
-	
+
 	return true;
 }
 
@@ -1717,7 +1748,7 @@ ir_print_glsl_visitor::visit(ir_loop *ir)
 {
 	if (emit_canonical_for(ir))
 		return;
-	
+
 	buffer.asprintf_append ("while (true) {\n");
 	indentation++; previous_skipped = false;
 	foreach_in_list(ir_instruction, inst, &ir->body_instructions) {
